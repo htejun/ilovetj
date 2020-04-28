@@ -102,6 +102,8 @@ parser.add_argument('--label-color', '-c', metavar='COLOR', default='red',
                     help='label color (default: %(default)s)')
 parser.add_argument('--label-font', '-n', metavar='FONT', default='Bitstream-Vera-Sans-Bold',
                     help='label font, "convert -list font" to see the font list (default: %(default)s)')
+parser.add_argument('--label-margin', '-m', metavar='XPCTxYPCT', default='50x50',
+                    help='Margin around label in percents of label height (default: %(default)s)')
 parser.add_argument('--concurrency', type=int, default=os.cpu_count(),
                     help='maximum concurrency (default: %(default)s)')
 parser.add_argument('--verbose', '-v', action='count', default = 0)
@@ -229,7 +231,16 @@ try:
     if paper_size[0] <= 0 or paper_size[1] <= 0:
         raise Exception('must be positive')
 except Exception as e:
-    err(f'Size must be in the format WIDTHxHEIGHT ({e})')
+    err(f'--size must be in the format WIDTHxHEIGHT ({e})')
+
+# parse label margin
+try:
+    label_margin_pct = prog_args.label_margin.split('x', 2)
+    label_margin_pct = (float(label_margin_pct[0]), float(label_margin_pct[1]))
+    if label_margin_pct[0] < 0 or label_margin_pct[1] < 0:
+        raise Exception('must be 0 or positive')
+except Exception as e:
+    err(f'--label-margin must be in the format XPCTxYPCT ({e})')
 
 # convert that to pixel size based on the dpi
 size = (int(paper_size[0] / MM_PER_IN * prog_args.dpi),
@@ -387,8 +398,11 @@ if prog_args.label_sep is not None:
         src_file = f'{tempdir}/{src}'
         dst_file = f'{tempdir}/{dst}'
 
+        margin = (int(label_height * label_margin_pct[0] / 100),
+                  int(label_height * label_margin_pct[1] / 100))
         args = [stem]
         args += [ '-gravity', 'South',
+                  '-geometry', f'-{margin[0]}+{margin[1]}',
                   label_files[src], f'{tempdir}/{src}',
                   f'{tempdir}/{dst}' ]
 
