@@ -404,10 +404,22 @@ pdfs = []
 for src in prog_args.src:
     if os.path.isdir(src):
         pdfs += sorted_mixed_basename(glob.glob(f'{src}/*.pdf'))
+        continue
     elif os.path.isfile(src):
         pdfs.append(src)
-    else:
-        err(f'Invalid source file/dir "{src}"')
+        continue
+    elif len(src) and src[-1] == '"':
+        # When run through windows powershell, quoting somehow can get
+        # broken and source may end up with a trailing extra double quote.
+        src = src[:-1]
+        if os.path.isdir(src):
+            pdfs += sorted_mixed_basename(glob.glob(f'{src}/*.pdf'))
+            continue
+        elif os.path.isfile(src):
+            pdfs.append(src)
+            continue
+
+    err(f'Invalid source file/dir "{src}"')
 
 if not prog_args.keep_order:
     pdfs = sorted_mixed_basename(pdfs)
