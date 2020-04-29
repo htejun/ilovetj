@@ -170,8 +170,14 @@ def sectioned_mixed_key(x):
     keys = []
     for s in sections:
         for k in re.split('([0-9]+)', s):
-            if len(k) > 0:
-                keys.append(int(k) if k.isdigit() else k)
+            if len(k) == 0:
+                continue
+            if k.isdigit():
+                if len(keys) > 0 and isinstance(keys[-1], int):
+                    keys.append("")
+                keys.append(int(k))
+            else:
+                keys.append(k)
         if len(keys) > 0 and not isinstance(keys[-1], int):
             keys.append(-1)
     ddbg(f'section_mixed_key: {x} -> {keys}')
