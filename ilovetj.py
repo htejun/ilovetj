@@ -88,10 +88,13 @@ parser.add_argument('src', metavar='PDF_OR_DIR', nargs='+',
                     help='Source PDF files or directories')
 parser.add_argument('--output', '-o', required=True,
                     help='Output pdf file')
+parser.add_argument('--numbered-output', metavar='true|false', type=bool,
+                    default=platform.system() == 'Windows',
+                    help='Append number to output filename to avoid overwriting (default: %(default)s)')
+parser.add_argument('--dpi', '-d', metavar='DPI', type=int, default=300,
+                    help='Processing DPI (default: %(default)s)')
 parser.add_argument('--keep-order', action='store_true',
                     help='Keep source PDF order instead of sorting them alphabetically')
-parser.add_argument('--dpi', metavar='DPI', type=int, default=300,
-                    help='Processing DPI (default: %(default)s)')
 parser.add_argument('--size', metavar='WIDTHxHEIGHT', default='215.9x279.4',
                     help='paper size in millimeters (default: %(default)s)')
 parser.add_argument('--header', metavar='IMAGE',
@@ -508,12 +511,22 @@ if prog_args.label_sep is not None:
     srcs = labeled
 
 # collect the processed results into the output pdf
+output_path = prog_args.output
+if prog_args.numbered_output and os.path.exists(output_path):
+    (base, ext) = os.path.splitext(output_path)
+    nr = 1
+    while True:
+        output_path = f'{base}.{nr}{ext}'
+        if not os.path.exists(output_path):
+            break
+        nr += 1
+
 args = [ '-format', 'pdf',
          '-resize', f'{size[0]}x{size[1]}',
          '-units', 'PixelsPerInch',
          '-density', f'{prog_args.dpi}' ]
 args += [ f'{tempdir}/{src}' for src in srcs ]
-args.append(prog_args.output)
+args.append(output_path)
 
-info(f'Collecting annotated pages into {prog_args.output}')
+info(f'Collecting annotated pages into {output_path}')
 run_convert(args)
