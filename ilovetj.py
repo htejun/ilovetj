@@ -114,7 +114,7 @@ parser.add_argument('--label-height', metavar='PCT', type=float, default=5,
 parser.add_argument('--label-gravity', metavar='GRAVITY',
                     choices=GRAVITY_CHOICES, default='southeast',
                     help='label position orientation (default: %(default)s)')
-parser.add_argument('--label-margin', metavar='XPCTxYPCT', default='2.5x7.5',
+parser.add_argument('--label-margin', metavar='XPCTxYPCT', default='4.5x6',
                     help='margin around label in percents of page size (default: %(default)s)')
 parser.add_argument('--label-color', metavar='COLOR', default='red',
                     help='label color (default: %(default)s)')
@@ -128,7 +128,7 @@ parser.add_argument('--number-height', metavar='PCT', type=float, default=2.5,
 parser.add_argument('--number-gravity', metavar='GRAVITY',
                     choices=GRAVITY_CHOICES, default='southeast',
                     help='page number position orientation (default: %(default)s)')
-parser.add_argument('--number-margin', metavar='XPCTxYPCT', default='2.5x2',
+parser.add_argument('--number-margin', metavar='XPCTxYPCT', default='5x2',
                     help='margin around page number in percents of page size (default: %(default)s)')
 parser.add_argument('--number-color', metavar='COLOR', default='black',
                     help='page number color (default: %(default)s)')
