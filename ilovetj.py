@@ -78,6 +78,10 @@ This program was written after being horribly shocked at Seulki Kim
 into InDesign and manually labeling them.
 '''
 
+GRAVITY_CHOICES=['northwest', 'north', 'northeast',
+                 'west', 'center', 'east',
+                 'southwest', 'south', 'southeast']
+
 parser = argparse.ArgumentParser(description=desc,
                                  formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('src', metavar='PDF_OR_DIR', nargs='+',
@@ -102,6 +106,9 @@ parser.add_argument('--label-sep', metavar='SEPARATOR',
                     help='filename label separator')
 parser.add_argument('--label-height', metavar='PCT', type=float, default=5,
                     help='label height in percents of the page height')
+parser.add_argument('--label-gravity', metavar='GRAVITY',
+                    choices=GRAVITY_CHOICES, default='southeast',
+                    help='Margin around label in percents of label height (default: %(default)s)')
 parser.add_argument('--label-margin', metavar='XPCTxYPCT', default='70x125',
                     help='Margin around label in percents of label height (default: %(default)s)')
 parser.add_argument('--label-color', metavar='COLOR', default='red',
@@ -238,6 +245,26 @@ def run_parallel(args_set, runfn, max_active):
 
 # main starts here
 MM_PER_IN = 25.4
+
+GRAVITY_X = { 'northwest' : 'west',
+              'north'     : 'center',
+              'northeast' : 'east',
+              'west'      : 'west',
+              'center'    : 'center',
+              'east'      : 'east',
+              'southwest' : 'west',
+              'south'     : 'center',
+              'southeast' : 'east' }
+
+GRAVITY_Y = { 'northwest' : 'north',
+              'north'     : 'north',
+              'northeast' : 'north',
+              'west'      : 'center',
+              'center'    : 'center',
+              'east'      : 'center',
+              'southwest' : 'south',
+              'south'     : 'south',
+              'southeast' : 'south' }
 
 GS_BIN = find_bin('gs', 'C:/Program Files/gs/gs*/bin/gswin*c.EXE')
 if GS_BIN is None:
@@ -436,7 +463,7 @@ if prog_args.label_sep is not None:
         args += [ '-background', 'none',
                   '-fill', prog_args.label_color,
                   '-size', f'{size[0]}x{label_height}',
-                  '-gravity', 'East',
+                  '-gravity', GRAVITY_X[prog_args.label_gravity],
                   f'label:{label}',
                   label_file ]
 
@@ -463,7 +490,7 @@ if prog_args.label_sep is not None:
         margin = (int(label_height * label_margin_pct[0] / 100),
                   int(label_height * label_margin_pct[1] / 100))
         args = [stem]
-        args += [ '-gravity', 'South',
+        args += [ '-gravity', GRAVITY_Y[prog_args.label_gravity],
                   '-geometry', f'-{margin[0]}+{margin[1]}',
                   label_files[src],
                   f'{tempdir}/{src}',
