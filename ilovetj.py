@@ -264,10 +264,11 @@ def run_parallel(args_set, runfn, max_active):
         t.join()
 
 def generate_label_args(label, font, height, color, gravity, filename):
+    args = []
     if font is not None:
-        args = [ '-font', font ]
+        args += [ '-font', font ]
     elif platform.system() == 'Linux':
-        args = [ '-font', 'Bitstream-Vera-Sans-Bold' ]
+        args += [ '-font', 'Bitstream-Vera-Sans-Bold' ]
 
     args += [ '-background', 'none',
               '-fill', color,
