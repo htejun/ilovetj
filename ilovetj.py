@@ -49,7 +49,9 @@ Annotate pages from source pdfs and collect them into a single pdf.
 
     convert -font "FONT_NAME" -size 128x128 label:test test.png
 
-  It's working if the generated png file contains "test".
+  It's working if the generated png file contains "test". On windows, prefix
+  all ImageMagick commands with magick - "magick convert" instead of
+  "convert".
 
 All pages are converted to bitmaps with ghostscript and processed with
 ImageMagick. All pages in the output pdf are bitmaps. The resolution can be
@@ -102,8 +104,8 @@ parser.add_argument('--label-height', '-L', metavar='PCT', type=float, default=5
                     help='label height in percents of the page height')
 parser.add_argument('--label-color', '-c', metavar='COLOR', default='red',
                     help='label color (default: %(default)s)')
-parser.add_argument('--label-font', '-n', metavar='FONT', default='Bitstream-Vera-Sans-Bold',
-                    help='label font, "convert -list font" to see the font list (default: %(default)s)')
+parser.add_argument('--label-font', '-n', metavar='FONT',
+                    help='label font, "convert -list font" to see the font list')
 parser.add_argument('--label-margin', '-m', metavar='XPCTxYPCT', default='50x50',
                     help='Margin around label in percents of label height (default: %(default)s)')
 parser.add_argument('--concurrency', type=int, default=os.cpu_count(),
@@ -237,7 +239,7 @@ def run_parallel(args_set, runfn, max_active):
 # main starts here
 MM_PER_IN = 25.4
 
-GS_BIN = find_bin('gs', 'C:/Program Files/gs/gs*/bin/gswin*.EXE')
+GS_BIN = find_bin('gs', 'C:/Program Files/gs/gs*/bin/gswin*c.EXE')
 if GS_BIN is None:
     err(f'Ghostscript is not found. Please install from https://www.ghostscript.com/')
 
@@ -425,9 +427,14 @@ if prog_args.label_sep is not None:
         labels.add(label)
 
         args = [label]
+
+        if prog_args.label_font is not None:
+            args += [ '-font', prog_args.label_font ]
+        elif platform.system() == 'Linux':
+            args += [ '-font', 'Bitstream-Vera-Sans-Bold' ]
+
         args += [ '-background', 'none',
                   '-fill', prog_args.label_color,
-                  '-font', prog_args.label_font,
                   '-size', f'{size[0]}x{label_height}',
                   '-gravity', 'East',
                   f'label:{label}',
