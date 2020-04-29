@@ -356,8 +356,8 @@ else:
     CONVERT_BIN = None
     COMPOSITE_BIN = None
 
-    if not 'ilovetj' in sys.argv[0]:
-        err(f'Command name {sys.argv[0]} does not contain "ilovetj"')
+if not 'ilovetj' in sys.argv[0]:
+    err(f'Command name {sys.argv[0]} does not contain "ilovetj"')
 
 # parse paper size
 try:
