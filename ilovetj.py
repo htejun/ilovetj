@@ -422,10 +422,9 @@ if prog_args.label_sep is not None:
     srcs = labeled
 
 # collect the processed results into the output pdf
-args = [ '-page', f'{paper_size[0]}x{paper_size[1]}',
-         '-format', 'pdf',
-         '-density', f'{prog_args.dpi}',
-         '-units', 'PixelsPerInch' ]
+args = [ '-format', 'pdf',
+         '-units', 'PixelsPerInch',
+         '-density', f'{prog_args.dpi}' ]
 args += [ f'{tempdir}/{src}' for src in srcs ]
 args.append(prog_args.output)
 
