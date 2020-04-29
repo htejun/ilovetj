@@ -102,20 +102,20 @@ parser.add_argument('--size', metavar='WIDTHxHEIGHT', default='215.9x279.4',
 parser.add_argument('--header', metavar='IMAGE',
                     help='header image to use')
 parser.add_argument('--header-height', metavar='PCT', type=float, default=10,
-                    help='header height in percents of the page height')
+                    help='header height in percents of the page height (default: %(default)s)')
 parser.add_argument('--footer', metavar='IMAGE',
                     help='footer image to use')
 parser.add_argument('--footer-height', metavar='PCT', type=float, default=20,
-                    help='footer height in percents of the page height')
+                    help='footer height in percents of the page height (default: %(default)s)')
 
 parser.add_argument('--label-sep', metavar='SEPARATOR',
                     help='filename label separator')
-parser.add_argument('--label-height', metavar='PCT', type=float, default=5,
-                    help='label height in percents of the page height')
+parser.add_argument('--label-height', metavar='PCT', type=float, default=4,
+                    help='label height in percents of the page height (default: %(default)s)')
 parser.add_argument('--label-gravity', metavar='GRAVITY',
                     choices=GRAVITY_CHOICES, default='southeast',
                     help='label position orientation (default: %(default)s)')
-parser.add_argument('--label-margin', metavar='XPCTxYPCT', default='4.5x6',
+parser.add_argument('--label-margin', metavar='XPCTxYPCT', default='4.5x8',
                     help='margin around label in percents of page size (default: %(default)s)')
 parser.add_argument('--label-color', metavar='COLOR', default='red',
                     help='label color (default: %(default)s)')
@@ -124,12 +124,12 @@ parser.add_argument('--label-font', metavar='FONT',
 
 parser.add_argument('--number-start', metavar='START',
                     help='Number to start numbering pages from')
-parser.add_argument('--number-height', metavar='PCT', type=float, default=2.5,
-                    help='page number height in percents of the page height')
+parser.add_argument('--number-height', metavar='PCT', type=float, default=2,
+                    help='page number height in percents of the page height (default: %(default)s)')
 parser.add_argument('--number-gravity', metavar='GRAVITY',
                     choices=GRAVITY_CHOICES, default='southeast',
                     help='page number position orientation (default: %(default)s)')
-parser.add_argument('--number-margin', metavar='XPCTxYPCT', default='5x2',
+parser.add_argument('--number-margin', metavar='XPCTxYPCT', default='4.5x5',
                     help='margin around page number in percents of page size (default: %(default)s)')
 parser.add_argument('--number-color', metavar='COLOR', default='black',
                     help='page number color (default: %(default)s)')
@@ -297,7 +297,7 @@ def apply_labels(srcs, label_files, prefix, report_prefix,
         src_file = f'{tempdir}/{src}'
         dst_file = f'{tempdir}/{dst}'
 
-        args = [f'{report_prefix} "{stem}"...']
+        args = [f'{report_prefix} "{stem}"']
         args += [ '-gravity', GRAVITY_Y[gravity],
                   '-geometry', f'-{margin[0]}+{margin[1]}',
                   label_files[src],
@@ -476,7 +476,7 @@ for pdf in pdfs:
     srcs.append(f'SRC_{stem}.png')
 
 def render_fn(args):
-    info(f'Rendering {args[0]}...')
+    info(f'Rendering "{args[0]}"...')
     run_gs(args[1:])
 
 run_parallel(args_set, render_fn, prog_args.concurrency)
@@ -505,7 +505,7 @@ for src in srcs:
     resized.append(dst)
 
 def resize_fn(args):
-    info(f'Resizing {args[0]}...')
+    info(f'Resizing "{args[0]}"...')
     run_convert(args[1:])
 
 run_parallel(args_set, resize_fn, prog_args.concurrency)
@@ -534,7 +534,7 @@ if header_file is not None or footer_file is not None:
         merged.append(dst)
 
     def merge_fn(args):
-        info(f'Merging {args[0]}...')
+        info(f'Merging "{args[0]}"...')
         run_convert(args[1:])
 
     run_parallel(args_set, merge_fn, prog_args.concurrency)
@@ -624,5 +624,6 @@ args = [ '-format', 'pdf',
 args += [ f'{tempdir}/{src}' for src in srcs ]
 args.append(output_path)
 
-info(f'Collecting annotated pages into {output_path}')
+info(f'Collecting annotated pages into "{output_path}"...')
 run_convert(args)
+info('Done')
