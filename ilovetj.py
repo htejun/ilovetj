@@ -16,6 +16,7 @@
 # 
 import argparse
 import os
+import platform
 import sys
 import shutil
 import subprocess
@@ -50,9 +51,10 @@ Annotate pages from source pdfs and collect them into a single pdf.
 
   It's working if the generated png file contains "test".
 
-All pages are converted to bitmaps and processed with ImageMagick. All pages
-in the output pdf are bitmaps. The resolution can be changed with --dpi.
-To install ImageMagick, visit https://imagemagick.org.
+All pages are converted to bitmaps with ghostscript and processed with
+ImageMagick. All pages in the output pdf are bitmaps. The resolution can be
+changed with --dpi. To install ghostscript and ImageMagick, visit
+https://www.ghostscript.com and https://imagemagick.org.
 
 EXAMPLE:
 
@@ -150,13 +152,33 @@ def stem_name(path):
 def sorted_mixed_basename(l):
     return sorted(l, key = lambda key: sectioned_mixed_key(stem_name(key)))
 
-def find_magick_bin(cmd):
+def find_bin(cmd, win_glob=None):
     bin_path = shutil.which(cmd)
+    if bin_path is not None:
+        return bin_path
+    if win_glob is None or platform.system() != 'Windows':
+        return None
+    cands = glob.glob(win_glob)
+    if len(cands) > 0:
+        return cands[0]
+    return None
+
+def find_magick_bin(cmd, win_glob=None):
+    bin_path = find_bin(cmd, win_glob)
     if bin_path is None:
         return None
     if b'ImageMagick' not in subprocess.check_output([cmd, '-version']):
         return None
     return bin_path
+
+def run_gs(args):
+    cmd = [GS_BIN]
+    cmd += args
+    dbg(f'Running {cmd}')
+    try:
+        subprocess.check_call(cmd)
+    except Exception as e:
+        err(f'ghostscript command ({cmd}) failed ({e})')
 
 def run_convert(args):
     if MAGICK_BIN is None:
@@ -215,7 +237,11 @@ def run_parallel(args_set, runfn, max_active):
 # main starts here
 MM_PER_IN = 25.4
 
-MAGICK_BIN = find_magick_bin('magick')
+GS_BIN = find_bin('gs', 'C:/Program Files/gs/gs*/bin/gswin*.EXE')
+if GS_BIN is None:
+    err(f'Ghostscript is not found. Please install from https://www.ghostscript.com/')
+
+MAGICK_BIN = find_magick_bin('magick', 'C:/Program Files/ImageMagick*/magick.EXE')
 if MAGICK_BIN is None:
     CONVERT_BIN = find_magick_bin('convert')
     COMPOSITE_BIN = find_magick_bin('composite')
@@ -306,19 +332,19 @@ if prog_args.footer is not None:
 srcs = []
 args_set = []
 for pdf in pdfs:
-    dst = f'SRC_{stem_name(pdf)}.png'
-    args = [stem_name(pdf)]
-    args += ['(', '-density', f'{2 * prog_args.dpi}', pdf, ')',
-             '(', '-strip', ')',
-             '(', '-resize', f'{size[0]}x{body_height}', ')',
-             '(', '-gravity', 'center', '-extent', f'{size[0]}x{body_height}', ')',
-             f'{tempdir}/{dst}']
+    stem = stem_name(pdf)
+    args = [stem]
+    args += [ '-q', '-dQUIET', '-dSAFER', '-dBATCH', '-dNOPAUSE', '-dNOPROMPT',
+              '-dMaxBitMap=500000000', '-dAlignToPixels=0', '-dGridFitTT=2',
+              '-sDEVICE=png16m', '-dTextAlphaBits=4', '-dGraphicsAlphaBits=4',
+              f'-r{prog_args.dpi}',
+              f'-sOutputFile={tempdir}/SRC_{stem}-%d.png', pdf ]
     args_set.append(args)
-    srcs.append(dst)
+    srcs.append(f'SRC_{stem}.png')
 
 def render_fn(args):
     info(f'Rendering {args[0]}...')
-    run_convert(args[1:])
+    run_gs(args[1:])
 
 run_parallel(args_set, render_fn, prog_args.concurrency)
 
@@ -328,6 +354,29 @@ for src in srcs:
     new_srcs += [ os.path.basename(p) for p in sorted_mixed_basename(glob.glob(pattern)) ]
 dbg(f'srcs={srcs} new_srcs={new_srcs}')
 srcs = new_srcs
+
+# resize to body_height
+resized = []
+args_set = []
+for src in srcs:
+    dst = f'RESIZED_{src.split("_", 1)[1]}'
+
+    args = [stem_name(dst).split('_', 1)[1]]
+    args += [f'{tempdir}/{src}',
+             '(', '-strip', ')',
+             '(', '-resize', f'{size[0]}x{body_height}', ')',
+             '(', '-gravity', 'center', '-extent', f'{size[0]}x{body_height}', ')',
+             f'{tempdir}/{dst}']
+
+    args_set.append(args)
+    resized.append(dst)
+
+def resize_fn(args):
+    info(f'Resizing {args[0]}...')
+    run_convert(args[1:])
+
+run_parallel(args_set, resize_fn, prog_args.concurrency)
+srcs = resized
 
 # merge header and footer
 if header_file is not None or footer_file is not None:
