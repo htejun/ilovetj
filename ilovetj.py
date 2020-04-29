@@ -71,7 +71,7 @@ EXAMPLE:
   have header and footer attached and labeled with D1, L1 or L2 on the
   bottom right.
 
-    $ ilovetj.py -l "-" -o output.pdf SPECS
+    $ ilovetj.py --label-sep "-" -o output.pdf SPECS
 
 This program was written after being horribly shocked at Seulki Kim
 <seulki@looplighthing.nyc> spending literally hours copy-pasting pdf pages
@@ -84,30 +84,30 @@ parser.add_argument('src', metavar='PDF_OR_DIR', nargs='+',
                     help='Source PDF files or directories')
 parser.add_argument('--output', '-o', required=True,
                     help='Output pdf file')
-parser.add_argument('--keep-order', '-O', action='store_true',
+parser.add_argument('--keep-order', action='store_true',
                     help='Keep source PDF order instead of sorting them alphabetically')
-parser.add_argument('--dpi', '-d', metavar='DPI', type=int, default=300,
+parser.add_argument('--dpi', metavar='DPI', type=int, default=300,
                     help='Processing DPI (default: %(default)s)')
-parser.add_argument('--size', '-s', metavar='WIDTHxHEIGHT', default='215.9x279.4',
+parser.add_argument('--size', metavar='WIDTHxHEIGHT', default='215.9x279.4',
                     help='paper size in millimeters (default: %(default)s)')
-parser.add_argument('--header', '-e', metavar='IMAGE',
+parser.add_argument('--header', metavar='IMAGE',
                     help='header image to use')
-parser.add_argument('--header-height', '-E', metavar='PCT', type=float, default=10,
+parser.add_argument('--header-height', metavar='PCT', type=float, default=10,
                     help='header height in percents of the page height')
-parser.add_argument('--footer', '-f', metavar='IMAGE',
+parser.add_argument('--footer', metavar='IMAGE',
                     help='footer image to use')
-parser.add_argument('--footer-height', '-F', metavar='PCT', type=float, default=20,
+parser.add_argument('--footer-height', metavar='PCT', type=float, default=20,
                     help='footer height in percents of the page height')
-parser.add_argument('--label-sep', '-l', metavar='SEPARATOR',
+parser.add_argument('--label-sep', metavar='SEPARATOR',
                     help='filename label separator')
-parser.add_argument('--label-height', '-L', metavar='PCT', type=float, default=5,
+parser.add_argument('--label-height', metavar='PCT', type=float, default=5,
                     help='label height in percents of the page height')
-parser.add_argument('--label-color', '-c', metavar='COLOR', default='red',
-                    help='label color (default: %(default)s)')
-parser.add_argument('--label-font', '-n', metavar='FONT',
-                    help='label font, "convert -list font" to see the font list')
-parser.add_argument('--label-margin', '-m', metavar='XPCTxYPCT', default='70x125',
+parser.add_argument('--label-margin', metavar='XPCTxYPCT', default='70x125',
                     help='Margin around label in percents of label height (default: %(default)s)')
+parser.add_argument('--label-color', metavar='COLOR', default='red',
+                    help='label color (default: %(default)s)')
+parser.add_argument('--label-font', metavar='FONT',
+                    help='label font, "convert -list font" to see the font list')
 parser.add_argument('--concurrency', type=int, default=os.cpu_count(),
                     help='maximum concurrency (default: %(default)s)')
 parser.add_argument('--verbose', '-v', action='count', default = 0)
@@ -409,7 +409,7 @@ if header_file is not None or footer_file is not None:
     run_parallel(args_set, merge_fn, prog_args.concurrency)
     srcs = merged
 
-# annotate
+# label
 if prog_args.label_sep is not None:
     # generate labels
     label_height = int(size[1] * prog_args.label_height / 100)
