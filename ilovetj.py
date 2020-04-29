@@ -309,6 +309,7 @@ for pdf in pdfs:
     dst = f'SRC_{stem_name(pdf)}.png'
     args = [stem_name(pdf)]
     args += ['(', '-density', f'{2 * prog_args.dpi}', pdf, ')',
+             '(', '-strip', ')',
              '(', '-resize', f'{size[0]}x{body_height}', ')',
              '(', '-gravity', 'center', '-extent', f'{size[0]}x{body_height}', ')',
              f'{tempdir}/{dst}']
@@ -344,6 +345,7 @@ if header_file is not None or footer_file is not None:
         args.append(src_file)
         if footer_file is not None:
             args.append(footer_file)
+        args.append('-strip')
         args.append(dst_file)
 
         args_set.append(args)
@@ -423,6 +425,7 @@ if prog_args.label_sep is not None:
 
 # collect the processed results into the output pdf
 args = [ '-format', 'pdf',
+         '-resize', f'{size[0]}x{size[1]}',
          '-units', 'PixelsPerInch',
          '-density', f'{prog_args.dpi}' ]
 args += [ f'{tempdir}/{src}' for src in srcs ]
