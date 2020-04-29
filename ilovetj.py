@@ -16,8 +16,9 @@
 # 
 import argparse
 import os
-import platform
 import sys
+import platform
+import atexit
 import shutil
 import subprocess
 import glob
@@ -141,7 +142,8 @@ parser.add_argument('--verbose', '-v', action='count', default = 0)
 parser.add_argument('--tempdir', metavar='DIR',
                     help='specify explicit temporary directory for debugging')
 
-prog_args = parser.parse_args()
+def is_windows():
+    return platform.system() == 'Windows'
 
 def err(msg):
     print(msg, file=sys.stderr)
@@ -185,7 +187,7 @@ def find_bin(cmd, win_glob=None):
     bin_path = shutil.which(cmd)
     if bin_path is not None:
         return bin_path
-    if win_glob is None or platform.system() != 'Windows':
+    if win_glob is None or not is_windows():
         return None
     cands = glob.glob(win_glob)
     if len(cands) > 0:
@@ -329,6 +331,11 @@ GRAVITY_Y = { 'northwest' : 'north',
               'south'     : 'south',
               'southeast' : 'south' }
 
+if is_windows():
+    atexit.register(lambda: os.system('pause'))
+
+prog_args = parser.parse_args()
+
 GS_BIN = find_bin('gs', 'C:/Program Files/gs/gs*/bin/gswin*c.EXE')
 if GS_BIN is None:
     err(f'Ghostscript is not found. Please install from https://www.ghostscript.com/')
@@ -368,10 +375,13 @@ except Exception as e:
     err(f'--label-margin must be in the format XPCTxYPCT ({e})')
 
 # parse number start
-try:
-    number_start = int(prog_args.number_start)
-except Exception as e:
-    err(f'--number-start must be an integer ({e})')
+if prog_args.number_start is None:
+    number_start = None
+else:
+    try:
+        number_start = int(prog_args.number_start)
+    except Exception as e:
+        err(f'--number-start must be an integer ({e})')
 
 # parse number margin
 try:
@@ -408,7 +418,7 @@ for src in prog_args.src:
     elif os.path.isfile(src):
         pdfs.append(src)
         continue
-    elif len(src) and src[-1] == '"':
+    elif is_windows() and len(src) and src[-1] == '"':
         # When run through windows powershell, quoting somehow can get
         # broken and source may end up with a trailing extra double quote.
         src = src[:-1]
@@ -560,7 +570,7 @@ if prog_args.label_sep is not None:
                         label_height, prog_args.label_gravity, label_margin)
 
 # number
-if prog_args.number_start is not None:
+if number_start is not None:
     # generate numbers
     number_height = int(size[1] * prog_args.number_height / 100)
     number = number_start
