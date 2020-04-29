@@ -139,7 +139,7 @@ def sectioned_mixed_key(x):
         for k in re.split('([0-9]+)', s):
             if len(k) > 0:
                 keys.append(int(k) if k.isdigit() else k)
-        if not isinstance(keys[-1], int):
+        if len(keys) > 0 and not isinstance(keys[-1], int):
             keys.append(-1)
     ddbg(f'section_mixed_key: {x} -> {keys}')
     return keys
@@ -150,8 +150,19 @@ def stem_name(path):
 def sorted_mixed_basename(l):
     return sorted(l, key = lambda key: sectioned_mixed_key(stem_name(key)))
 
+def find_magick_bin(cmd):
+    bin_path = shutil.which(cmd)
+    if bin_path is None:
+        return None
+    if b'ImageMagick' not in subprocess.check_output([cmd, '-version']):
+        return None
+    return bin_path
+
 def run_convert(args):
-    cmd = [CONVERT_BIN]
+    if MAGICK_BIN is None:
+        cmd = [CONVERT_BIN]
+    else:
+        cmd = [MAGICK_BIN, 'convert']
     cmd += args
     dbg(f'Running {cmd}')
     try:
@@ -160,7 +171,10 @@ def run_convert(args):
         err(f'convert command ({cmd}) failed ({e})')
 
 def run_composite(args):
-    cmd = [COMPOSITE_BIN]
+    if MAGICK_BIN is None:
+        cmd = [COMPOSITE_BIN]
+    else:
+        cmd = [MAGICK_BIN, 'composite']
     cmd += args
     dbg(f'Running {cmd}')
     try:
@@ -201,28 +215,18 @@ def run_parallel(args_set, runfn, max_active):
 # main starts here
 MM_PER_IN = 25.4
 
-CONVERT_BIN = shutil.which("convert")
-if CONVERT_BIN is None:
-    err(f'ImageMagick is not found. Please install from https://imagemagick.org')
-try:
-    if b'ImageMagick' not in subprocess.check_output([CONVERT_BIN, '-version']):
-        raise Exception(f'output does not contain ImageMagick signature')
-except Exception as e:
-    err(f'"{CONVERT_BIN} -version" failed ({e})\n'
-        'Please install ImageMagick from https://imagemagick.org')
+MAGICK_BIN = find_magick_bin('magick')
+if MAGICK_BIN is None:
+    CONVERT_BIN = find_magick_bin('convert')
+    COMPOSITE_BIN = find_magick_bin('composite')
+    if CONVERT_BIN is None or COMPOSITE_BIN is None:
+        err(f'ImageMagick is not found. Please install from https://imagemagick.org')
+else:
+    CONVERT_BIN = None
+    COMPOSITE_BIN = None
 
-COMPOSITE_BIN = shutil.which("composite")
-if CONVERT_BIN is None:
-    err(f'ImageMagick is not found. Please install from https://imagemagick.org')
-try:
-    if b'ImageMagick' not in subprocess.check_output([COMPOSITE_BIN, '-version']):
-        raise Exception(f'output does not contain ImageMagick signature')
-except Exception as e:
-    err(f'"{COMPOSITE_BIN} -version" failed ({e})\n'
-        'Please install ImageMagick from https://imagemagick.org')
-
-if not 'ilovetj' in sys.argv[0]:
-    err(f'Command name {sys.argv[0]} does not contain "ilovetj"')
+    if not 'ilovetj' in sys.argv[0]:
+        err(f'Command name {sys.argv[0]} does not contain "ilovetj"')
 
 # parse paper size
 try:
