@@ -96,7 +96,7 @@ parser.add_argument('--header-height', '-E', metavar='PCT', type=float, default=
                     help='header height in percents of the page height')
 parser.add_argument('--footer', '-f', metavar='IMAGE',
                     help='footer image to use')
-parser.add_argument('--footer-height', '-F', metavar='PCT', type=float, default=10,
+parser.add_argument('--footer-height', '-F', metavar='PCT', type=float, default=20,
                     help='footer height in percents of the page height')
 parser.add_argument('--label-sep', '-l', metavar='SEPARATOR',
                     help='filename label separator')
@@ -106,7 +106,7 @@ parser.add_argument('--label-color', '-c', metavar='COLOR', default='red',
                     help='label color (default: %(default)s)')
 parser.add_argument('--label-font', '-n', metavar='FONT',
                     help='label font, "convert -list font" to see the font list')
-parser.add_argument('--label-margin', '-m', metavar='XPCTxYPCT', default='50x50',
+parser.add_argument('--label-margin', '-m', metavar='XPCTxYPCT', default='70x125',
                     help='Margin around label in percents of label height (default: %(default)s)')
 parser.add_argument('--concurrency', type=int, default=os.cpu_count(),
                     help='maximum concurrency (default: %(default)s)')
@@ -465,7 +465,8 @@ if prog_args.label_sep is not None:
         args = [stem]
         args += [ '-gravity', 'South',
                   '-geometry', f'-{margin[0]}+{margin[1]}',
-                  label_files[src], f'{tempdir}/{src}',
+                  label_files[src],
+                  f'{tempdir}/{src}',
                   f'{tempdir}/{dst}' ]
 
         args_set.append(args)
