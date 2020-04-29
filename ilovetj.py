@@ -97,6 +97,7 @@ parser.add_argument('--keep-order', action='store_true',
                     help='Keep source PDF order instead of sorting them alphabetically')
 parser.add_argument('--size', metavar='WIDTHxHEIGHT', default='215.9x279.4',
                     help='paper size in millimeters (default: %(default)s)')
+
 parser.add_argument('--header', metavar='IMAGE',
                     help='header image to use')
 parser.add_argument('--header-height', metavar='PCT', type=float, default=10,
@@ -105,19 +106,35 @@ parser.add_argument('--footer', metavar='IMAGE',
                     help='footer image to use')
 parser.add_argument('--footer-height', metavar='PCT', type=float, default=20,
                     help='footer height in percents of the page height')
+
 parser.add_argument('--label-sep', metavar='SEPARATOR',
                     help='filename label separator')
 parser.add_argument('--label-height', metavar='PCT', type=float, default=5,
                     help='label height in percents of the page height')
 parser.add_argument('--label-gravity', metavar='GRAVITY',
                     choices=GRAVITY_CHOICES, default='southeast',
-                    help='Margin around label in percents of label height (default: %(default)s)')
-parser.add_argument('--label-margin', metavar='XPCTxYPCT', default='70x125',
-                    help='Margin around label in percents of label height (default: %(default)s)')
+                    help='label position orientation (default: %(default)s)')
+parser.add_argument('--label-margin', metavar='XPCTxYPCT', default='2.5x7.5',
+                    help='margin around label in percents of page size (default: %(default)s)')
 parser.add_argument('--label-color', metavar='COLOR', default='red',
                     help='label color (default: %(default)s)')
 parser.add_argument('--label-font', metavar='FONT',
                     help='label font, "convert -list font" to see the font list')
+
+parser.add_argument('--number-start', metavar='START',
+                    help='Number to start numbering pages from')
+parser.add_argument('--number-height', metavar='PCT', type=float, default=2.5,
+                    help='page number height in percents of the page height')
+parser.add_argument('--number-gravity', metavar='GRAVITY',
+                    choices=GRAVITY_CHOICES, default='southeast',
+                    help='page number position orientation (default: %(default)s)')
+parser.add_argument('--number-margin', metavar='XPCTxYPCT', default='2.5x2',
+                    help='margin around page number in percents of page size (default: %(default)s)')
+parser.add_argument('--number-color', metavar='COLOR', default='black',
+                    help='page number color (default: %(default)s)')
+parser.add_argument('--number-font', metavar='FONT',
+                    help='page number font, "convert -list font" to see the font list')
+
 parser.add_argument('--concurrency', type=int, default=os.cpu_count(),
                     help='maximum concurrency (default: %(default)s)')
 parser.add_argument('--verbose', '-v', action='count', default = 0)
@@ -246,6 +263,48 @@ def run_parallel(args_set, runfn, max_active):
     for t in threads:
         t.join()
 
+def generate_label_args(label, font, height, color, gravity, filename):
+    if font is not None:
+        args = [ '-font', font ]
+    elif platform.system() == 'Linux':
+        args = [ '-font', 'Bitstream-Vera-Sans-Bold' ]
+
+    args += [ '-background', 'none',
+              '-fill', color,
+              '-size', f'{size[0]}x{height}',
+              '-gravity', GRAVITY_X[gravity],
+              f'label:{label}',
+              filename ]
+    return args
+
+def apply_labels(srcs, label_files, prefix, report_prefix,
+                 height, gravity, margin):
+    labeled = []
+    args_set = []
+    for src in srcs:
+        stem = os.path.splitext(src.split('_', 1)[1])[0]
+        dst = f'{prefix}_{stem}.png'
+
+        src_file = f'{tempdir}/{src}'
+        dst_file = f'{tempdir}/{dst}'
+
+        args = [f'{report_prefix} "{stem}"...']
+        args += [ '-gravity', GRAVITY_Y[gravity],
+                  '-geometry', f'-{margin[0]}+{margin[1]}',
+                  label_files[src],
+                  f'{tempdir}/{src}',
+                  f'{tempdir}/{dst}' ]
+
+        args_set.append(args)
+        labeled.append(dst)
+
+    def apply_label_fn(args):
+        info(f'{args[0]}...')
+        run_composite(args[1:])
+
+    run_parallel(args_set, apply_label_fn, prog_args.concurrency)
+    return labeled
+
 # main starts here
 MM_PER_IN = 25.4
 
@@ -295,18 +354,31 @@ try:
 except Exception as e:
     err(f'--size must be in the format WIDTHxHEIGHT ({e})')
 
-# parse label margin
-try:
-    label_margin_pct = prog_args.label_margin.split('x', 2)
-    label_margin_pct = (float(label_margin_pct[0]), float(label_margin_pct[1]))
-    if label_margin_pct[0] < 0 or label_margin_pct[1] < 0:
-        raise Exception('must be 0 or positive')
-except Exception as e:
-    err(f'--label-margin must be in the format XPCTxYPCT ({e})')
-
 # convert that to pixel size based on the dpi
 size = (int(paper_size[0] / MM_PER_IN * prog_args.dpi),
         int(paper_size[1] / MM_PER_IN * prog_args.dpi))
+
+# parse label margin
+try:
+    label_margin = prog_args.label_margin.split('x', 2)
+    label_margin = (int(size[0] * float(label_margin[0]) / 100),
+                    int(size[1] * float(label_margin[1]) / 100))
+except Exception as e:
+    err(f'--label-margin must be in the format XPCTxYPCT ({e})')
+
+# parse number start
+try:
+    number_start = int(prog_args.number_start)
+except Exception as e:
+    err(f'--number-start must be an integer ({e})')
+
+# parse number margin
+try:
+    number_margin = prog_args.number_margin.split('x', 2)
+    number_margin = (int(size[0] * float(number_margin[0]) / 100),
+                     int(size[1] * float(number_margin[1]) / 100))
+except Exception as e:
+    err(f'--label-margin must be in the format XPCTxYPCT ({e})')
 
 # determine header, content and footer sizes
 header_height = 0
@@ -457,19 +529,9 @@ if prog_args.label_sep is not None:
         labels.add(label)
 
         args = [label]
-
-        if prog_args.label_font is not None:
-            args += [ '-font', prog_args.label_font ]
-        elif platform.system() == 'Linux':
-            args += [ '-font', 'Bitstream-Vera-Sans-Bold' ]
-
-        args += [ '-background', 'none',
-                  '-fill', prog_args.label_color,
-                  '-size', f'{size[0]}x{label_height}',
-                  '-gravity', GRAVITY_X[prog_args.label_gravity],
-                  f'label:{label}',
-                  label_file ]
-
+        args += generate_label_args(label, prog_args.label_font,
+                                    label_height, prog_args.label_color,
+                                    prog_args.label_gravity, label_file)
         args_set.append(args)
 
     def label_fn(args):
@@ -481,34 +543,39 @@ if prog_args.label_sep is not None:
     dbg(f'label_files={label_files}')
 
     # apply labels
-    labeled = []
+    srcs = apply_labels(srcs, label_files, 'LABELED', 'Labeling',
+                        label_height, prog_args.label_gravity, label_margin)
+
+# number
+if prog_args.number_start is not None:
+    # generate numbers
+    number_height = int(size[1] * prog_args.number_height / 100)
+    number = number_start
+    number_files = {}
     args_set = []
     for src in srcs:
         stem = os.path.splitext(src.split('_', 1)[1])[0]
-        dst = f'LABELED_{stem}.png'
+        number_file = f'{tempdir}/NUMBER_{number}.png'
+        number_files[src] = number_file
 
-        src_file = f'{tempdir}/{src}'
-        dst_file = f'{tempdir}/{dst}'
-
-        margin = (int(label_height * label_margin_pct[0] / 100),
-                  int(label_height * label_margin_pct[1] / 100))
-        args = [stem]
-        args += [ '-gravity', GRAVITY_Y[prog_args.label_gravity],
-                  '-geometry', f'-{margin[0]}+{margin[1]}',
-                  label_files[src],
-                  f'{tempdir}/{src}',
-                  f'{tempdir}/{dst}' ]
-
+        args = [number]
+        args += generate_label_args(f'{number}', prog_args.number_font,
+                                    number_height, prog_args.number_color,
+                                    prog_args.number_gravity, number_file)
         args_set.append(args)
-        labeled.append(dst)
+        number += 1
 
-    def apply_label_fn(args):
-        info(f'Labeling "{args[0]}"...')
-        run_composite(args[1:])
+    def number_fn(args):
+        info(f'Generating page number "{args[0]}"...')
+        run_convert(args[1:])
 
-    run_parallel(args_set, apply_label_fn, prog_args.concurrency)
+    run_parallel(args_set, number_fn, prog_args.concurrency)
 
-    srcs = labeled
+    dbg(f'number_files={number_files}')
+
+    # apply numbers
+    srcs = apply_labels(srcs, number_files, 'NUMBERED', 'Numbering',
+                        number_height, prog_args.number_gravity, number_margin)
 
 # collect the processed results into the output pdf
 output_path = prog_args.output
