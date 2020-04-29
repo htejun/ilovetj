@@ -196,7 +196,7 @@ def find_magick_bin(cmd, win_glob=None):
     bin_path = find_bin(cmd, win_glob)
     if bin_path is None:
         return None
-    if b'ImageMagick' not in subprocess.check_output([cmd, '-version']):
+    if b'ImageMagick' not in subprocess.check_output([bin_path, '-version']):
         return None
     return bin_path
 
